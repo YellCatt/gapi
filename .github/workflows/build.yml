@@ -11,13 +11,24 @@ jobs:
     strategy:
       matrix:
         target:
+          # MIPSle - Pure Go (modernc.org/sqlite) - RECOMMENDED for HiWiFi
           - os: linux
             arch: mipsle
-            suffix: linux_mipsle
+            suffix: linux_mipsle_go
             goflags: GOOS=linux GOARCH=mipsle GOMIPS=softfloat
-            ldflags: "-s -w -linkmode=external -extldflags='-Wl,-rpath=\\$ORIGIN/lib'"
-            tags: "netgo osusergo"
+            ldflags: "-s -w"
+            tags: "sqlite_omit_load_extension"
+            cgo: false
+            desc: "纯Go SQLite，无需依赖"
+          # MIPSle - CGO (mattn/go-sqlite3) - 需要系统 SQLite 库
+          - os: linux
+            arch: mipsle_cgo
+            suffix: linux_mipsle_cgo
+            goflags: GOOS=linux GOARCH=mipsle GOMIPS=softfloat
+            ldflags: "-s -w"
+            tags: ""
             cgo: true
+            desc: "CGO SQLite，需要系统 libsqlite3.so"
           - os: linux
             arch: amd64
             suffix: linux_amd64
@@ -25,6 +36,7 @@ jobs:
             ldflags: "-s -w"
             tags: ""
             cgo: false
+            desc: "纯Go SQLite"
           - os: linux
             arch: arm64
             suffix: linux_arm64
@@ -32,6 +44,7 @@ jobs:
             ldflags: "-s -w"
             tags: ""
             cgo: false
+            desc: "纯Go SQLite"
           - os: windows
             arch: amd64
             suffix: windows_amd64
@@ -39,6 +52,7 @@ jobs:
             ldflags: "-s -w"
             tags: ""
             cgo: false
+            desc: "纯Go SQLite"
 
     steps:
     - uses: actions/checkout@v4
@@ -48,14 +62,13 @@ jobs:
       with:
         go-version: '1.22'
 
-    - name: Install MIPSle cross-compiler (for mipsle target)
-      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+    - name: Install MIPSle cross-compiler (for CGO)
+      if: matrix.target.cgo == true
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu libc6-dev-mipsel-cross linux-libc-dev-mipsel-cross libgcc-s1-mipsel-cross libstdc++-10-dev-mipsel-cross
+        sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu libc6-dev-mipsel-cross linux-libc-dev-mipsel-cross
         STUBS_DIR="/usr/mipsel-linux-gnu/include/gnu"
         if [ ! -f "${STUBS_DIR}/stubs-o32_soft.h" ]; then
-          echo "Creating missing stubs-o32_soft.h for softfloat ABI"
           sudo touch "${STUBS_DIR}/stubs-o32_soft.h"
           sudo sh -c 'echo "#if !defined _STUBS_O32_SOFT_H" > "${STUBS_DIR}/stubs-o32_soft.h"'
           sudo sh -c 'echo "#define _STUBS_O32_SOFT_H 1" >> "${STUBS_DIR}/stubs-o32_soft.h"'
@@ -65,8 +78,8 @@ jobs:
           sudo sh -c 'echo "#endif" >> "${STUBS_DIR}/stubs-o32_soft.h"'
         fi
 
-    - name: Download and extract SQLite .so from OpenWRT (for MIPSle)
-      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+    - name: Download OpenWRT SQLite for CGO linking
+      if: matrix.target.cgo == true
       run: |
         wget -q https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/23.05.0/packages/mipsel_24kc/packages/libsqlite3-0_3410200-1_mipsel_24kc.ipk
         tar -xzf libsqlite3-*.ipk
@@ -76,32 +89,27 @@ jobs:
         ln -sf libsqlite3.so.0 ./lib/libsqlite3.so
         ls -la lib/
 
-    - name: Set up CGO environment (for mipsle)
-      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+    - name: Set CGO environment (CGO build)
+      if: matrix.target.cgo == true
       run: |
         echo "CC=mipsel-linux-gnu-gcc" >> $GITHUB_ENV
         echo "CXX=mipsel-linux-gnu-g++" >> $GITHUB_ENV
         echo "CGO_ENABLED=1" >> $GITHUB_ENV
         echo "CGO_LDFLAGS=-L$(pwd)/lib" >> $GITHUB_ENV
 
-    - name: Set up CGO disabled (for non-mipsle)
+    - name: Set CGO disabled (Pure Go build)
       if: matrix.target.cgo == false
       run: |
         echo "CGO_ENABLED=0" >> $GITHUB_ENV
 
-    - name: Fix go modules
-      run: |
-        go clean -modcache
-        go mod tidy
-
     - name: Build for ${{ matrix.target.os }}/${{ matrix.target.arch }}
       run: |
         OUTPUT_FILE="gapi_${{ matrix.target.suffix }}${{ matrix.target.os == 'windows' && '.exe' || '' }}"
-        ${{ matrix.target.goflags }} go build -ldflags="${{ matrix.target.ldflags }}" ${{ matrix.target.tags != '' && format('-tags="{0}"', matrix.target.tags) || '' }} -o "$OUTPUT_FILE"
+        ${{ matrix.target.goflags }} go build -ldflags="${{ matrix.target.ldflags }}" ${{ matrix.target.tags != '' && format('-tags={0}', matrix.target.tags) || '' }} -o "$OUTPUT_FILE"
         ls -la gapi_*
 
-    - name: Package MIPSle with lib directory
-      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+    - name: Package with lib directory (CGO build)
+      if: matrix.target.cgo == true
       run: |
         mkdir -p release
         mv gapi_${{ matrix.target.suffix }} release/
@@ -109,14 +117,7 @@ jobs:
         ls -la release/
         tar -czf gapi_${{ matrix.target.suffix }}.tar.gz release/
 
-    - name: Upload artifact (MIPSle with lib)
-      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
-      uses: actions/upload-artifact@v4
-      with:
-        name: gapi_${{ matrix.target.suffix }}
-        path: gapi_${{ matrix.target.suffix }}.tar.gz
-
-    - name: Package non-MIPSle executables
+    - name: Package executable (Pure Go build)
       if: matrix.target.cgo == false
       run: |
         if [ "${{ matrix.target.os }}" = "windows" ]; then
@@ -125,8 +126,7 @@ jobs:
           tar -czf gapi_${{ matrix.target.suffix }}.tar.gz gapi_${{ matrix.target.suffix }}
         fi
 
-    - name: Upload artifact (other platforms)
-      if: matrix.target.cgo == false
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: gapi_${{ matrix.target.suffix }}
@@ -161,6 +161,6 @@ jobs:
 
           gh release create "$VERSION" \
             --title "Development Build (Latest)" \
-            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms:**%0A- Linux amd64%0A- Linux arm64%0A- Linux mipsle (极路由2 - CGO + SQLite动态库)%0A- Windows amd64%0A%0A**MIPSle说明:**%0A解压后运行 ./release/gapi_linux_mipsle，程序会自动从同级 lib 目录加载 SQLite" \
+            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms:**%0A- Linux amd64 (纯Go SQLite)%0A- Linux arm64 (纯Go SQLite)%0A- Linux mipsle_go (极路由 - 纯Go SQLite，推荐)%0A- Linux mipsle_cgo (极路由 - CGO SQLite，需要系统 libsqlite3.so)%0A- Windows amd64 (纯Go SQLite)%0A%0A**使用说明:**%0A**纯Go版本 (推荐):** 解压后直接运行即可，无需依赖%0A**CGO版本:** 需要确保路由器上有 libsqlite3.so.0" \
             --prerelease \
             artifacts/*
