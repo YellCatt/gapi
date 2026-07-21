@@ -5,7 +5,6 @@ import (
 
 	"github.com/example/gapi/controller"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
-	"github.com/swaggo/swag"
 )
 
 func NewRouter(userController *controller.UserController) *http.ServeMux {
@@ -17,14 +16,172 @@ func NewRouter(userController *controller.UserController) *http.ServeMux {
 	mux.HandleFunc("PUT /api/users/{id}", userController.UpdateUser)
 	mux.HandleFunc("DELETE /api/users/{id}", userController.DeleteUser)
 
-	mux.HandleFunc("GET /swagger/", func(w http.ResponseWriter, r *http.Request) {
-		httpSwagger.WrapHandler(w, r, httpSwagger.URL("/swagger/doc.json"))
-	})
+	mux.Handle("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	mux.HandleFunc("GET /swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(swag.GetSwagger()))
+		w.Write([]byte(swaggerDoc))
 	})
 
 	return mux
 }
+
+const swaggerDoc = `{
+  "swagger": "2.0",
+  "info": {
+    "description": "GAPI - Go API Service",
+    "title": "GAPI",
+    "contact": {},
+    "version": "1.0"
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "paths": {
+    "/api/users": {
+      "get": {
+        "description": "Get all users",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["users"],
+        "summary": "Get all users",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/model.User" }
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Create a new user",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["users"],
+        "summary": "Create user",
+        "parameters": [
+          {
+            "description": "User object",
+            "name": "user",
+            "in": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/model.CreateUserRequest" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": { "$ref": "#/definitions/model.User" }
+          },
+          "400": { "description": "Bad Request" }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "description": "Get user by ID",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["users"],
+        "summary": "Get user",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "User ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": { "$ref": "#/definitions/model.User" }
+          },
+          "404": { "description": "Not Found" }
+        }
+      },
+      "put": {
+        "description": "Update user",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["users"],
+        "summary": "Update user",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "User ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "User object",
+            "name": "user",
+            "in": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/model.UpdateUserRequest" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": { "$ref": "#/definitions/model.User" }
+          },
+          "404": { "description": "Not Found" }
+        }
+      },
+      "delete": {
+        "description": "Delete user",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["users"],
+        "summary": "Delete user",
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "User ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": { "description": "No Content" },
+          "404": { "description": "Not Found" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "model.CreateUserRequest": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "integer" }
+      },
+      "required": ["name", "age"]
+    },
+    "model.UpdateUserRequest": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "integer" }
+      }
+    },
+    "model.User": {
+      "type": "object",
+      "properties": {
+        "ID": { "type": "integer" },
+        "CreatedAt": { "type": "string", "format": "date-time" },
+        "UpdatedAt": { "type": "string", "format": "date-time" },
+        "DeletedAt": { "type": "string", "format": "date-time" },
+        "name": { "type": "string" },
+        "age": { "type": "integer" }
+      }
+    }
+  }
+}`

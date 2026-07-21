@@ -72,17 +72,17 @@ func openLogFile(path, name string) (*os.File, error) {
 }
 
 // exactLevel 只输出指定级别，且不低于用户配置的最低级别。
-func exactLevel(min, target zapcore.Level) zapcore.LevelEnablerFunc {
-	return func(l zapcore.Level) bool {
+func exactLevel(min, target zapcore.Level) zapcore.LevelEnabler {
+	return zap.LevelEnablerFunc(func(l zapcore.Level) bool {
 		return l >= min && l == target
-	}
+	})
 }
 
 // atLeastLevel 输出该级别及以上日志。
-func atLeastLevel(min zapcore.Level) zapcore.LevelEnablerFunc {
-	return func(l zapcore.Level) bool {
+func atLeastLevel(min zapcore.Level) zapcore.LevelEnabler {
+	return zap.LevelEnablerFunc(func(l zapcore.Level) bool {
 		return l >= min
-	}
+	})
 }
 
 func Info(msg string, fields ...zap.Field) {
