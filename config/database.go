@@ -4,10 +4,9 @@ import (
 	"log"
 
 	"github.com/example/gapi/model"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	_ "modernc.org/sqlite"
+	sqlite "github.com/glebarez/sqlite"
 )
 
 func NewDatabase() *gorm.DB {
