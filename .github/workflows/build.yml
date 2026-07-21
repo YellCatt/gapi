@@ -102,6 +102,11 @@ jobs:
       run: |
         echo "CGO_ENABLED=0" >> $GITHUB_ENV
 
+    - name: Download dependencies
+      run: |
+        go clean -modcache
+        go mod tidy
+
     - name: Build for ${{ matrix.target.os }}/${{ matrix.target.arch }}
       run: |
         OUTPUT_FILE="gapi_${{ matrix.target.suffix }}${{ matrix.target.os == 'windows' && '.exe' || '' }}"
