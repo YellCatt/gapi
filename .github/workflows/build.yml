@@ -14,17 +14,15 @@ jobs:
           - os: linux
             arch: mipsle
             suffix: linux_mipsle
-            goflags: GOOS=linux GOARCH=mipsle GOMIPS=softfloat
-            ldflags: "-s -w -linkmode=external -extldflags='-Wl,-rpath=$ORIGIN/lib'"
-            cgo: true
-            cross: true
+            goflags: GOOS=linux GOARCH=mipsle GOMIPS=softfloat CGO_ENABLED=1
+            ldflags: "-s -w -linkmode=external -extldflags '-static'"
+            # OpenWrt SDK for ramips/mt7620 (MT7620A, mipsel_24kc / little-endian)
+            toolchain_url: https://downloads.openwrt.org/releases/23.05.0/targets/ramips/mt7620/openwrt-sdk-23.05.0-ramips-mt7620_gcc-12.3.0_musl.Linux-x86_64.tar.xz
           - os: windows
             arch: amd64
             suffix: windows_amd64
-            goflags: GOOS=windows GOARCH=amd64
+            goflags: GOOS=windows GOARCH=amd64 CGO_ENABLED=1
             ldflags: "-s -w"
-            cgo: true
-            cross: false
 
     steps:
     - uses: actions/checkout@v4
@@ -34,56 +32,28 @@ jobs:
       with:
         go-version: '1.22'
 
-    - name: Install MIPSle cross-compiler
-      if: matrix.target.cross == true && matrix.target.arch == 'mipsle'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu libc6-dev-mipsel-cross linux-libc-dev-mipsel-cross libgcc-s1-mipsel-cross libstdc++-10-dev-mipsel-cross
-        STUBS_DIR="/usr/mipsel-linux-gnu/include/gnu"
-        if [ ! -f "${STUBS_DIR}/stubs-o32_soft.h" ]; then
-          sudo touch "${STUBS_DIR}/stubs-o32_soft.h"
-          sudo sh -c 'echo "#if !defined _STUBS_O32_SOFT_H" > "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "#define _STUBS_O32_SOFT_H 1" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "#include <gnu/stubs-o32.h>" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "#endif" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-        fi
-
-    - name: Download OpenWRT SQLite for MIPSle
+    - name: Install OpenWrt musl toolchain for MIPSle
       if: matrix.target.arch == 'mipsle'
       run: |
-        wget -q https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/23.05.0/packages/mipsel_24kc/packages/libsqlite3-0_3410200-1_mipsel_24kc.ipk
-        tar -xzf libsqlite3-*.ipk
-        tar -xzf data.tar.gz
-        mkdir -p lib
-        cp ./usr/lib/libsqlite3.so.* ./lib/
-        ln -sf libsqlite3.so.0 ./lib/libsqlite3.so
-        ls -la lib/
+        sudo apt-get update
+        sudo apt-get install -y xz-utils
+        wget -q "${{ matrix.target.toolchain_url }}"
+        tar -xJf openwrt-sdk-*.tar.xz
+        SDK_DIR=$(ls -d openwrt-sdk-* | head -1)
+        TOOLCHAIN_BIN=$(find "$SDK_DIR/staging_dir" -name 'mipsel-openwrt-linux-musl-gcc' -printf '%h\n' | head -1)
+        echo "TOOLCHAIN_BIN=$TOOLCHAIN_BIN" >> $GITHUB_ENV
+        echo "$TOOLCHAIN_BIN" >> $GITHUB_PATH
+        echo "CC=$TOOLCHAIN_BIN/mipsel-openwrt-linux-musl-gcc" >> $GITHUB_ENV
+        echo "CXX=$TOOLCHAIN_BIN/mipsel-openwrt-linux-musl-g++" >> $GITHUB_ENV
+        "$TOOLCHAIN_BIN/mipsel-openwrt-linux-musl-gcc" --version
 
-    - name: Install MinGW-w64 and SQLite for Windows
+    - name: Install MinGW-w64 for Windows
       if: matrix.target.os == 'windows'
       run: |
         sudo apt-get update
-        sudo apt-get install -y mingw-w64 libsqlite3-dev
-        mkdir -p lib
-        cp /usr/lib/x86_64-linux-gnu/libsqlite3.so.* ./lib/
-        ls -la lib/
-
-    - name: Set MIPSle CGO environment
-      if: matrix.target.arch == 'mipsle'
-      run: |
-        echo "CC=mipsel-linux-gnu-gcc" >> $GITHUB_ENV
-        echo "CXX=mipsel-linux-gnu-g++" >> $GITHUB_ENV
-        echo "CGO_ENABLED=1" >> $GITHUB_ENV
-        echo "CGO_LDFLAGS=-L$(pwd)/lib" >> $GITHUB_ENV
-
-    - name: Set Windows CGO environment
-      if: matrix.target.os == 'windows'
-      run: |
+        sudo apt-get install -y mingw-w64
         echo "CC=x86_64-w64-mingw32-gcc" >> $GITHUB_ENV
         echo "CXX=x86_64-w64-mingw32-g++" >> $GITHUB_ENV
-        echo "CGO_ENABLED=1" >> $GITHUB_ENV
 
     - name: Download dependencies
       run: |
@@ -93,19 +63,17 @@ jobs:
     - name: Build for ${{ matrix.target.os }}/${{ matrix.target.arch }}
       run: |
         OUTPUT_FILE="gapi_${{ matrix.target.suffix }}${{ matrix.target.os == 'windows' && '.exe' || '' }}"
-        ${{ matrix.target.goflags }} go build -ldflags="${{ matrix.target.ldflags }}" -o "$OUTPUT_FILE"
+        ${{ matrix.target.goflags }} go build -tags netgo -ldflags="${{ matrix.target.ldflags }}" -o "$OUTPUT_FILE"
         ls -la gapi_*
+        file "$OUTPUT_FILE" || true
 
-    - name: Package with lib directory
+    - name: Package release
       run: |
         mkdir -p release
         if [ "${{ matrix.target.os }}" = "windows" ]; then
           mv gapi_${{ matrix.target.suffix }}.exe release/
         else
           mv gapi_${{ matrix.target.suffix }} release/
-        fi
-        if [ -d "lib" ]; then
-          mv lib release/
         fi
         ls -la release/
         tar -czf gapi_${{ matrix.target.suffix }}.tar.gz release/
@@ -145,6 +113,6 @@ jobs:
 
           gh release create "$VERSION" \
             --title "Development Build (Latest)" \
-            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms (全部使用 CGO + SQLite):**%0A- Linux mipsle (极路由 MT7620A/MT7628)%0A- Windows amd64%0A%0A**使用说明:**%0A解压release目录后运行对应平台的可执行文件，MIPSle版本会自动从lib目录加载SQLite" \
+            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms:**%0A- Linux mipsle (OpenWrt/musl, statically linked)%0A- Windows amd64%0A%0A**使用说明:**%0A解压后运行对应平台的可执行文件" \
             --prerelease \
             artifacts/*
