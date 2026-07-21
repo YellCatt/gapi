@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/example/gapi/model"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/sqlite/v2"
 	"gorm.io/gorm"
 )
 
