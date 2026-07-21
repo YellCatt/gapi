@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -12,6 +13,8 @@ import (
 )
 
 func main() {
+	config.LoadConfig()
+
 	db := config.NewDatabase()
 
 	userRepo := repository.NewUserRepository(db)
@@ -20,6 +23,7 @@ func main() {
 
 	r := router.NewRouter(userController)
 
-	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	port := config.GetServerPort()
+	log.Printf("Server starting on :%d", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), r))
 }

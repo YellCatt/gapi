@@ -9,7 +9,7 @@ import (
 )
 
 func NewDatabase() *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("./example.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(cfg.Database.Path), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
