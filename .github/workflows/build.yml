@@ -57,12 +57,12 @@ jobs:
     - name: Download and extract SQLite .so from OpenWRT (for MIPSle)
       if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
       run: |
-        wget -q https://downloads.openwrt.org/releases/23.05.3/targets/ramips/mt7620/packages/libsqlite3_3.43.2-1_mipsel_24kc.ipk
-        tar -xzf libsqlite3_*.ipk
+        wget -q https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/23.05.0/packages/mipsel_24kc/packages/libsqlite3-0_3410200-1_mipsel_24kc.ipk
+        tar -xzf libsqlite3-*.ipk
         tar -xzf data.tar.gz
         mkdir -p lib
-        cp ./usr/lib/libsqlite3.so.0.8.6 ./lib/libsqlite3.so
-        cp ./usr/lib/libsqlite3.so.0 ./lib/libsqlite3.so.0
+        cp ./usr/lib/libsqlite3.so.* ./lib/
+        ln -sf libsqlite3.so.0 ./lib/libsqlite3.so
         ls -la lib/
 
     - name: Set up CGO environment (for mipsle)
