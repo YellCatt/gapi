@@ -13,7 +13,6 @@ import (
 
 func main() {
 	db := config.NewDatabase()
-	defer db.Close()
 
 	userRepo := repository.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
