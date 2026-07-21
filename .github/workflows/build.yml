@@ -39,8 +39,9 @@ jobs:
         sudo apt-get install -y xz-utils
         wget -q "${{ matrix.target.toolchain_url }}"
         tar -xJf openwrt-sdk-*.tar.xz
-        SDK_DIR=$(ls -d openwrt-sdk-* | head -1)
+        SDK_DIR=$(realpath $(ls -d openwrt-sdk-* | head -1))
         TOOLCHAIN_BIN=$(find "$SDK_DIR/staging_dir" -name 'mipsel-openwrt-linux-musl-gcc' -printf '%h\n' | head -1)
+        TOOLCHAIN_BIN=$(realpath "$TOOLCHAIN_BIN")
         echo "TOOLCHAIN_BIN=$TOOLCHAIN_BIN" >> $GITHUB_ENV
         echo "$TOOLCHAIN_BIN" >> $GITHUB_PATH
         echo "CC=$TOOLCHAIN_BIN/mipsel-openwrt-linux-musl-gcc" >> $GITHUB_ENV
