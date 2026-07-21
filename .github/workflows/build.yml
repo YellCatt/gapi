@@ -11,48 +11,30 @@ jobs:
     strategy:
       matrix:
         target:
-          # MIPSle - Pure Go (modernc.org/sqlite) - RECOMMENDED for HiWiFi
           - os: linux
             arch: mipsle
-            suffix: linux_mipsle_go
+            suffix: linux_mipsle
             goflags: GOOS=linux GOARCH=mipsle GOMIPS=softfloat
             ldflags: "-s -w"
             tags: "sqlite_omit_load_extension"
-            cgo: false
-            desc: "纯Go SQLite，无需依赖"
-          # MIPSle - CGO (mattn/go-sqlite3) - 需要系统 SQLite 库
-          - os: linux
-            arch: mipsle_cgo
-            suffix: linux_mipsle_cgo
-            goflags: GOOS=linux GOARCH=mipsle GOMIPS=softfloat
-            ldflags: "-s -w"
-            tags: ""
-            cgo: true
-            desc: "CGO SQLite，需要系统 libsqlite3.so"
           - os: linux
             arch: amd64
             suffix: linux_amd64
             goflags: GOOS=linux GOARCH=amd64
             ldflags: "-s -w"
             tags: ""
-            cgo: false
-            desc: "纯Go SQLite"
           - os: linux
             arch: arm64
             suffix: linux_arm64
             goflags: GOOS=linux GOARCH=arm64
             ldflags: "-s -w"
             tags: ""
-            cgo: false
-            desc: "纯Go SQLite"
           - os: windows
             arch: amd64
             suffix: windows_amd64
             goflags: GOOS=windows GOARCH=amd64
             ldflags: "-s -w"
             tags: ""
-            cgo: false
-            desc: "纯Go SQLite"
 
     steps:
     - uses: actions/checkout@v4
@@ -62,45 +44,8 @@ jobs:
       with:
         go-version: '1.22'
 
-    - name: Install MIPSle cross-compiler (for CGO)
-      if: matrix.target.cgo == true
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu libc6-dev-mipsel-cross linux-libc-dev-mipsel-cross
-        STUBS_DIR="/usr/mipsel-linux-gnu/include/gnu"
-        if [ ! -f "${STUBS_DIR}/stubs-o32_soft.h" ]; then
-          sudo touch "${STUBS_DIR}/stubs-o32_soft.h"
-          sudo sh -c 'echo "#if !defined _STUBS_O32_SOFT_H" > "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "#define _STUBS_O32_SOFT_H 1" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "#include <gnu/stubs-o32.h>" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-          sudo sh -c 'echo "#endif" >> "${STUBS_DIR}/stubs-o32_soft.h"'
-        fi
-
-    - name: Download OpenWRT SQLite for CGO linking
-      if: matrix.target.cgo == true
-      run: |
-        wget -q https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/23.05.0/packages/mipsel_24kc/packages/libsqlite3-0_3410200-1_mipsel_24kc.ipk
-        tar -xzf libsqlite3-*.ipk
-        tar -xzf data.tar.gz
-        mkdir -p lib
-        cp ./usr/lib/libsqlite3.so.* ./lib/
-        ln -sf libsqlite3.so.0 ./lib/libsqlite3.so
-        ls -la lib/
-
-    - name: Set CGO environment (CGO build)
-      if: matrix.target.cgo == true
-      run: |
-        echo "CC=mipsel-linux-gnu-gcc" >> $GITHUB_ENV
-        echo "CXX=mipsel-linux-gnu-g++" >> $GITHUB_ENV
-        echo "CGO_ENABLED=1" >> $GITHUB_ENV
-        echo "CGO_LDFLAGS=-L$(pwd)/lib" >> $GITHUB_ENV
-
-    - name: Set CGO disabled (Pure Go build)
-      if: matrix.target.cgo == false
-      run: |
-        echo "CGO_ENABLED=0" >> $GITHUB_ENV
+    - name: Set CGO_ENABLED=0
+      run: echo "CGO_ENABLED=0" >> $GITHUB_ENV
 
     - name: Download dependencies
       run: |
@@ -113,17 +58,7 @@ jobs:
         ${{ matrix.target.goflags }} go build -ldflags="${{ matrix.target.ldflags }}" ${{ matrix.target.tags != '' && format('-tags={0}', matrix.target.tags) || '' }} -o "$OUTPUT_FILE"
         ls -la gapi_*
 
-    - name: Package with lib directory (CGO build)
-      if: matrix.target.cgo == true
-      run: |
-        mkdir -p release
-        mv gapi_${{ matrix.target.suffix }} release/
-        mv lib release/
-        ls -la release/
-        tar -czf gapi_${{ matrix.target.suffix }}.tar.gz release/
-
-    - name: Package executable (Pure Go build)
-      if: matrix.target.cgo == false
+    - name: Package executable
       run: |
         if [ "${{ matrix.target.os }}" = "windows" ]; then
           tar -czf gapi_${{ matrix.target.suffix }}.tar.gz gapi_${{ matrix.target.suffix }}.exe
@@ -166,6 +101,6 @@ jobs:
 
           gh release create "$VERSION" \
             --title "Development Build (Latest)" \
-            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms:**%0A- Linux amd64 (纯Go SQLite)%0A- Linux arm64 (纯Go SQLite)%0A- Linux mipsle_go (极路由 - 纯Go SQLite，推荐)%0A- Linux mipsle_cgo (极路由 - CGO SQLite，需要系统 libsqlite3.so)%0A- Windows amd64 (纯Go SQLite)%0A%0A**使用说明:**%0A**纯Go版本 (推荐):** 解压后直接运行即可，无需依赖%0A**CGO版本:** 需要确保路由器上有 libsqlite3.so.0" \
+            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms:**%0A- Linux amd64%0A- Linux arm64%0A- Linux mipsle (极路由 MT7620A/MT7628)%0A- Windows amd64%0A%0A**使用说明:**%0A所有版本均使用纯Go SQLite实现，无需系统依赖，解压后直接运行" \
             --prerelease \
             artifacts/*
