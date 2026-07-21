@@ -116,12 +116,21 @@ jobs:
         name: gapi_${{ matrix.target.suffix }}
         path: gapi_${{ matrix.target.suffix }}.tar.gz
 
+    - name: Package non-MIPSle executables
+      if: matrix.target.cgo == false
+      run: |
+        if [ "${{ matrix.target.os }}" = "windows" ]; then
+          tar -czf gapi_${{ matrix.target.suffix }}.tar.gz gapi_${{ matrix.target.suffix }}.exe
+        else
+          tar -czf gapi_${{ matrix.target.suffix }}.tar.gz gapi_${{ matrix.target.suffix }}
+        fi
+
     - name: Upload artifact (other platforms)
       if: matrix.target.cgo == false
       uses: actions/upload-artifact@v4
       with:
         name: gapi_${{ matrix.target.suffix }}
-        path: gapi_${{ matrix.target.suffix }}.*
+        path: gapi_${{ matrix.target.suffix }}.tar.gz
 
   release:
     needs: build
