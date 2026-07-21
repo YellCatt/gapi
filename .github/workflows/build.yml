@@ -102,11 +102,11 @@ jobs:
         ln -sf libsqlite3.so.0 ./lib/libsqlite3.so
         ls -la lib/
 
-    - name: Install SQLite for Windows
+    - name: Install MinGW-w64 and SQLite for Windows
       if: matrix.target.os == 'windows'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libsqlite3-dev
+        sudo apt-get install -y mingw-w64 libsqlite3-dev
         mkdir -p lib
         cp /usr/lib/x86_64-linux-gnu/libsqlite3.so.* ./lib/
         ls -la lib/
@@ -136,6 +136,8 @@ jobs:
     - name: Set Windows CGO environment
       if: matrix.target.os == 'windows'
       run: |
+        echo "CC=x86_64-w64-mingw32-gcc" >> $GITHUB_ENV
+        echo "CXX=x86_64-w64-mingw32-g++" >> $GITHUB_ENV
         echo "CGO_ENABLED=1" >> $GITHUB_ENV
 
     - name: Download dependencies
