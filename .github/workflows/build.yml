@@ -83,7 +83,6 @@ jobs:
         echo "CXX=mipsel-linux-gnu-g++" >> $GITHUB_ENV
         echo "CGO_ENABLED=1" >> $GITHUB_ENV
         echo "CGO_LDFLAGS=-L$(pwd)/lib" >> $GITHUB_ENV
-        echo "CGO_CFLAGS=-I$(pwd)/sqlite_lib/include" >> $GITHUB_ENV
 
     - name: Set up CGO disabled (for non-mipsle)
       if: matrix.target.cgo == false
