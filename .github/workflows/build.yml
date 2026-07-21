@@ -96,7 +96,8 @@ jobs:
 
     - name: Build for ${{ matrix.target.os }}/${{ matrix.target.arch }}
       run: |
-        ${{ matrix.target.goflags }} go build -ldflags="${{ matrix.target.ldflags }}" ${{ matrix.target.tags != '' && format('-tags="{0}"', matrix.target.tags) || '' }} -o gapi_${{ matrix.target.suffix }}.${{ matrix.target.os == 'windows' && 'exe' || '' }}
+        OUTPUT_FILE="gapi_${{ matrix.target.suffix }}${{ matrix.target.os == 'windows' && '.exe' || '' }}"
+        ${{ matrix.target.goflags }} go build -ldflags="${{ matrix.target.ldflags }}" ${{ matrix.target.tags != '' && format('-tags="{0}"', matrix.target.tags) || '' }} -o "$OUTPUT_FILE"
         ls -la gapi_*
 
     - name: Package MIPSle with lib directory
