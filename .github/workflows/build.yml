@@ -52,7 +52,23 @@ jobs:
       if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu libc6-dev-mipsel-cross
+        sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu libc6-dev-mipsel-cross linux-libc-dev-mipsel-cross libgcc-s1-mipsel-cross libstdc++-10-dev-mipsel-cross
+
+    - name: Fix missing stubs-o32_soft.h header
+      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+      run: |
+        STUBS_DIR="/usr/mipsel-linux-gnu/include/gnu"
+        if [ ! -f "${STUBS_DIR}/stubs-o32_soft.h" ]; then
+          echo "Creating missing stubs-o32_soft.h"
+          cat > "${STUBS_DIR}/stubs-o32_soft.h" << 'EOF'
+#if !defined _STUBS_O32_SOFT_H
+#define _STUBS_O32_SOFT_H 1
+
+#include <gnu/stubs-o32.h>
+
+#endif
+EOF
+        fi
 
     - name: Build SQLite for MIPSle (with CGO)
       if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
