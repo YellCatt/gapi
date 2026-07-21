@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -32,7 +33,7 @@ func Init(path string, level string) error {
 		StacktraceKey:  "stacktrace",
 		LineEnding:     zapcore.DefaultLineEnding,
 		EncodeLevel:    zapcore.LowercaseLevelEncoder,
-		EncodeTime:     zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
+		EncodeTime:     east8TimeEncoder,
 		EncodeDuration: zapcore.SecondsDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
@@ -83,6 +84,12 @@ func atLeastLevel(min zapcore.Level) zapcore.LevelEnabler {
 	return zap.LevelEnablerFunc(func(l zapcore.Level) bool {
 		return l >= min
 	})
+}
+
+var east8Location = time.FixedZone("CST", 8*60*60)
+
+func east8TimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+	enc.AppendString(t.In(east8Location).Format("2006-01-02 15:04:05"))
 }
 
 func Info(msg string, fields ...zap.Field) {
