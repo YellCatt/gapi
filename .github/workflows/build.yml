@@ -18,20 +18,6 @@ jobs:
             ldflags: "-s -w -linkmode=external -extldflags='-Wl,-rpath=$ORIGIN/lib'"
             cgo: true
             cross: true
-          - os: linux
-            arch: amd64
-            suffix: linux_amd64
-            goflags: GOOS=linux GOARCH=amd64
-            ldflags: "-s -w"
-            cgo: true
-            cross: false
-          - os: linux
-            arch: arm64
-            suffix: linux_arm64
-            goflags: GOOS=linux GOARCH=arm64
-            ldflags: "-s -w"
-            cgo: true
-            cross: true
           - os: windows
             arch: amd64
             suffix: windows_amd64
@@ -64,12 +50,6 @@ jobs:
           sudo sh -c 'echo "#endif" >> "${STUBS_DIR}/stubs-o32_soft.h"'
         fi
 
-    - name: Install ARM64 cross-compiler
-      if: matrix.target.cross == true && matrix.target.arch == 'arm64'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross linux-libc-dev-arm64-cross
-
     - name: Download OpenWRT SQLite for MIPSle
       if: matrix.target.arch == 'mipsle'
       run: |
@@ -78,29 +58,6 @@ jobs:
         tar -xzf data.tar.gz
         mkdir -p lib
         cp ./usr/lib/libsqlite3.so.* ./lib/
-        ln -sf libsqlite3.so.0 ./lib/libsqlite3.so
-        ls -la lib/
-
-    - name: Download ARM64 SQLite
-      if: matrix.target.arch == 'arm64'
-      run: |
-        sudo dpkg --add-architecture arm64
-        sudo sed -i 's|http://security.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports|g' /etc/apt/sources.list
-        sudo sed -i 's|http://archive.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports|g' /etc/apt/sources.list
-        sudo apt-get update
-        sudo apt-get install -y libsqlite3-dev:arm64
-        mkdir -p lib
-        cp /usr/aarch64-linux-gnu/lib/libsqlite3.so.* ./lib/
-        ln -sf libsqlite3.so.0 ./lib/libsqlite3.so
-        ls -la lib/
-
-    - name: Install SQLite for Linux amd64
-      if: matrix.target.os == 'linux' && matrix.target.arch == 'amd64'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libsqlite3-dev
-        mkdir -p lib
-        cp /usr/lib/x86_64-linux-gnu/libsqlite3.so.* ./lib/
         ln -sf libsqlite3.so.0 ./lib/libsqlite3.so
         ls -la lib/
 
@@ -118,20 +75,6 @@ jobs:
       run: |
         echo "CC=mipsel-linux-gnu-gcc" >> $GITHUB_ENV
         echo "CXX=mipsel-linux-gnu-g++" >> $GITHUB_ENV
-        echo "CGO_ENABLED=1" >> $GITHUB_ENV
-        echo "CGO_LDFLAGS=-L$(pwd)/lib" >> $GITHUB_ENV
-
-    - name: Set ARM64 CGO environment
-      if: matrix.target.arch == 'arm64'
-      run: |
-        echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-        echo "CXX=aarch64-linux-gnu-g++" >> $GITHUB_ENV
-        echo "CGO_ENABLED=1" >> $GITHUB_ENV
-        echo "CGO_LDFLAGS=-L$(pwd)/lib" >> $GITHUB_ENV
-
-    - name: Set Linux amd64 CGO environment
-      if: matrix.target.os == 'linux' && matrix.target.arch == 'amd64'
-      run: |
         echo "CGO_ENABLED=1" >> $GITHUB_ENV
         echo "CGO_LDFLAGS=-L$(pwd)/lib" >> $GITHUB_ENV
 
@@ -202,6 +145,6 @@ jobs:
 
           gh release create "$VERSION" \
             --title "Development Build (Latest)" \
-            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms (全部使用 CGO + SQLite):**%0A- Linux amd64%0A- Linux arm64%0A- Linux mipsle (极路由 MT7620A/MT7628)%0A- Windows amd64%0A%0A**使用说明:**%0A解压release目录后运行对应平台的可执行文件，MIPSle版本会自动从lib目录加载SQLite" \
+            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms (全部使用 CGO + SQLite):**%0A- Linux mipsle (极路由 MT7620A/MT7628)%0A- Windows amd64%0A%0A**使用说明:**%0A解压release目录后运行对应平台的可执行文件，MIPSle版本会自动从lib目录加载SQLite" \
             --prerelease \
             artifacts/*
