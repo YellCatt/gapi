@@ -84,6 +84,7 @@ jobs:
     - name: Download ARM64 SQLite
       if: matrix.target.arch == 'arm64'
       run: |
+        sudo dpkg --add-architecture arm64
         sudo apt-get update
         sudo apt-get install -y libsqlite3-dev:arm64
         mkdir -p lib
