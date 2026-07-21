@@ -4,8 +4,9 @@ import (
 	"log"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -53,7 +54,7 @@ func LoadConfig() {
 func createDefaultConfig(path string) error {
 	defaultCfg := Config{
 		Server: ServerConfig{
-			Port: 8080,
+			Port: 8084,
 		},
 		Database: DatabaseConfig{
 			Path: "./data.db",

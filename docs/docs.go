@@ -10,7 +10,7 @@ const docTemplate = `{
     "contact": {},
     "version": "1.0"
   },
-  "host": "localhost:8080",
+  "host": "localhost:8084",
   "basePath": "/",
   "paths": {
     "/api/users": {
@@ -163,7 +163,7 @@ const docTemplate = `{
 func init() {
 	swag.Register(swag.Name, &swag.Spec{
 		Version:          "1.0",
-		Host:             "localhost:8080",
+		Host:             "localhost:8084",
 		BasePath:         "/",
 		Schemes:          []string{"http"},
 		Title:            "GAPI",

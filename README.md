@@ -43,8 +43,8 @@ CGO_ENABLED=0 go build -o gapi
 
 ### 访问服务
 
-- API 服务：http://localhost:8080
-- Swagger 文档：http://localhost:8080/swagger/index.html
+- API 服务：http://localhost:8084
+- Swagger 文档：http://localhost:8084/swagger/index.html
 
 ## API 接口
 
@@ -61,7 +61,7 @@ CGO_ENABLED=0 go build -o gapi
 #### 创建用户
 
 ```bash
-curl -X POST http://localhost:8080/users \
+curl -X POST http://localhost:8084/users \
   -H "Content-Type: application/json" \
   -d '{"name": "John Doe", "email": "john@example.com"}'
 ```
@@ -69,19 +69,19 @@ curl -X POST http://localhost:8080/users \
 #### 获取所有用户
 
 ```bash
-curl http://localhost:8080/users
+curl http://localhost:8084/users
 ```
 
 #### 获取单个用户
 
 ```bash
-curl http://localhost:8080/users/1
+curl http://localhost:8084/users/1
 ```
 
 #### 更新用户
 
 ```bash
-curl -X PUT http://localhost:8080/users/1 \
+curl -X PUT http://localhost:8084/users/1 \
   -H "Content-Type: application/json" \
   -d '{"name": "John Updated", "email": "john.updated@example.com"}'
 ```
@@ -89,7 +89,7 @@ curl -X PUT http://localhost:8080/users/1 \
 #### 删除用户
 
 ```bash
-curl -X DELETE http://localhost:8080/users/1
+curl -X DELETE http://localhost:8084/users/1
 ```
 
 ## 配置文件
@@ -98,7 +98,7 @@ curl -X DELETE http://localhost:8080/users/1
 
 ```yaml
 server:
-  port: 8080
+  port: 8084
 
 database:
   path: ./data.db
@@ -110,7 +110,7 @@ log:
 
 | 配置项 | 说明 | 默认值 |
 |--------|------|--------|
-| server.port | 服务端口 | 8080 |
+| server.port | 服务端口 | 8084 |
 | database.path | SQLite 数据库路径 | ./data.db |
 | log.path | 日志目录 | ./logs |
 | log.level | 日志级别 | info |

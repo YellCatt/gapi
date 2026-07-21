@@ -36,7 +36,7 @@ const swaggerDoc = `{
     "contact": {},
     "version": "1.0"
   },
-  "host": "localhost:8080",
+  "host": "localhost:8084",
   "basePath": "/",
   "paths": {
     "/api/users": {
