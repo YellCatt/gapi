@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
+	Log      LogConfig      `yaml:"log"`
 }
 
 type ServerConfig struct {
@@ -18,6 +19,11 @@ type ServerConfig struct {
 
 type DatabaseConfig struct {
 	Path string `yaml:"path"`
+}
+
+type LogConfig struct {
+	Path  string `yaml:"path"`
+	Level string `yaml:"level"`
 }
 
 var cfg Config
@@ -40,4 +46,12 @@ func GetServerPort() int {
 
 func GetDatabasePath() string {
 	return cfg.Database.Path
+}
+
+func GetLogPath() string {
+	return cfg.Log.Path
+}
+
+func GetLogLevel() string {
+	return cfg.Log.Level
 }

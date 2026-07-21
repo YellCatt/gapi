@@ -7,13 +7,21 @@ import (
 
 	"github.com/example/gapi/config"
 	"github.com/example/gapi/controller"
+	"github.com/example/gapi/logger"
 	"github.com/example/gapi/repository"
 	"github.com/example/gapi/router"
 	"github.com/example/gapi/service"
+
+	"go.uber.org/zap"
 )
 
 func main() {
 	config.LoadConfig()
+
+	if err := logger.Init(config.GetLogPath(), config.GetLogLevel()); err != nil {
+		log.Fatalf("failed to init logger: %v", err)
+	}
+	defer logger.Sync()
 
 	db := config.NewDatabase()
 
@@ -24,6 +32,8 @@ func main() {
 	r := router.NewRouter(userController)
 
 	port := config.GetServerPort()
-	log.Printf("Server starting on :%d", port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), r))
+	logger.Info("server starting", zap.Int("port", port))
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), r); err != nil {
+		logger.Fatal("server exited", zap.Error(err))
+	}
 }
