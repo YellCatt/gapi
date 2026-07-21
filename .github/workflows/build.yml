@@ -68,19 +68,16 @@ jobs:
           echo '#endif' >> "${STUBS_DIR}/stubs-o32_soft.h"
         fi
 
-    - name: Build SQLite for MIPSle (with CGO)
+    - name: Download and extract SQLite .so from OpenWRT (for MIPSle)
       if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
       run: |
-        SQLITE_VERSION="3450300"
-        wget -q https://www.sqlite.org/2024/sqlite-autoconf-${SQLITE_VERSION}.tar.gz
-        tar -xzf sqlite-autoconf-${SQLITE_VERSION}.tar.gz
-        cd sqlite-autoconf-${SQLITE_VERSION}
-        ./configure --host=mipsel-linux-gnu --prefix=$(pwd)/../sqlite_lib --enable-shared
-        make -j$(nproc)
-        make install
-        cd ..
+        wget -q https://downloads.openwrt.org/releases/23.05.3/targets/ramips/mt7620/packages/libsqlite3_3.43.2-1_mipsel_24kc.ipk
+        tar -xzf libsqlite3_*.ipk
+        tar -xzf data.tar.gz
         mkdir -p lib
-        cp sqlite_lib/lib/libsqlite3.so* lib/
+        cp ./usr/lib/libsqlite3.so.0.8.6 ./lib/libsqlite3.so
+        cp ./usr/lib/libsqlite3.so.0 ./lib/libsqlite3.so.0
+        ls -la lib/
 
     - name: Set up CGO environment (for mipsle)
       if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
