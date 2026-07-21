@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 	"os"
@@ -54,4 +55,19 @@ func GetLogPath() string {
 
 func GetLogLevel() string {
 	return cfg.Log.Level
+}
+
+func InitDirectories() error {
+	if err := os.MkdirAll(cfg.Log.Path, 0755); err != nil {
+		return err
+	}
+
+	dbDir := filepath.Dir(cfg.Database.Path)
+	if dbDir != "." && dbDir != "" {
+		if err := os.MkdirAll(dbDir, 0755); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -18,6 +18,10 @@ import (
 func main() {
 	config.LoadConfig()
 
+	if err := config.InitDirectories(); err != nil {
+		log.Fatalf("failed to init directories: %v", err)
+	}
+
 	if err := logger.Init(config.GetLogPath(), config.GetLogLevel()); err != nil {
 		log.Fatalf("failed to init logger: %v", err)
 	}
