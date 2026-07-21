@@ -85,6 +85,8 @@ jobs:
       if: matrix.target.arch == 'arm64'
       run: |
         sudo dpkg --add-architecture arm64
+        sudo sed -i 's|http://security.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports|g' /etc/apt/sources.list
+        sudo sed -i 's|http://archive.ubuntu.com/ubuntu|http://ports.ubuntu.com/ubuntu-ports|g' /etc/apt/sources.list
         sudo apt-get update
         sudo apt-get install -y libsqlite3-dev:arm64
         mkdir -p lib
