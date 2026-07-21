@@ -4,13 +4,12 @@ import (
 	"log"
 
 	"github.com/example/gapi/model"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
-	sqlite "github.com/glebarez/sqlite"
 )
 
 func NewDatabase() *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file:"+cfg.Database.Path), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(cfg.Database.Path), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}

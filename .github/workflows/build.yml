@@ -14,27 +14,31 @@ jobs:
           - os: linux
             arch: mipsle
             suffix: linux_mipsle
-            goflags: CGO_ENABLED=0 GOOS=linux GOARCH=mipsle GOMIPS=softfloat
-            ldflags: "-s -w -extldflags=-static"
+            goflags: GOOS=linux GOARCH=mipsle GOMIPS=softfloat
+            ldflags: "-s -w -linkmode=external -extldflags='-Wl,-rpath=\\$ORIGIN/lib'"
             tags: "netgo osusergo"
+            cgo: true
           - os: linux
             arch: amd64
             suffix: linux_amd64
             goflags: GOOS=linux GOARCH=amd64
             ldflags: "-s -w"
             tags: ""
+            cgo: false
           - os: linux
             arch: arm64
             suffix: linux_arm64
             goflags: GOOS=linux GOARCH=arm64
             ldflags: "-s -w"
             tags: ""
+            cgo: false
           - os: windows
             arch: amd64
             suffix: windows_amd64
             goflags: GOOS=windows GOARCH=amd64
             ldflags: "-s -w"
             tags: ""
+            cgo: false
 
     steps:
     - uses: actions/checkout@v4
@@ -43,6 +47,40 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.22'
+
+    - name: Install MIPSle cross-compiler (for mipsle target)
+      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-mipsel-linux-gnu
+
+    - name: Build SQLite for MIPSle (with CGO)
+      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+      run: |
+        SQLITE_VERSION="3450300"
+        wget -q https://www.sqlite.org/2024/sqlite-autoconf-${SQLITE_VERSION}.tar.gz
+        tar -xzf sqlite-autoconf-${SQLITE_VERSION}.tar.gz
+        cd sqlite-autoconf-${SQLITE_VERSION}
+        ./configure --host=mipsel-linux-gnu --prefix=$(pwd)/../sqlite_lib --enable-shared
+        make -j$(nproc)
+        make install
+        cd ..
+        mkdir -p lib
+        cp sqlite_lib/lib/libsqlite3.so* lib/
+
+    - name: Set up CGO environment (for mipsle)
+      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+      run: |
+        echo "CC=mipsel-linux-gnu-gcc" >> $GITHUB_ENV
+        echo "CXX=mipsel-linux-gnu-g++" >> $GITHUB_ENV
+        echo "CGO_ENABLED=1" >> $GITHUB_ENV
+        echo "CGO_LDFLAGS=-L$(pwd)/lib" >> $GITHUB_ENV
+        echo "CGO_CFLAGS=-I$(pwd)/sqlite_lib/include" >> $GITHUB_ENV
+
+    - name: Set up CGO disabled (for non-mipsle)
+      if: matrix.target.cgo == false
+      run: |
+        echo "CGO_ENABLED=0" >> $GITHUB_ENV
 
     - name: Fix go modules
       run: |
@@ -54,7 +92,24 @@ jobs:
         ${{ matrix.target.goflags }} go build -ldflags="${{ matrix.target.ldflags }}" ${{ matrix.target.tags != '' && format('-tags="{0}"', matrix.target.tags) || '' }} -o gapi_${{ matrix.target.suffix }}.${{ matrix.target.os == 'windows' && 'exe' || '' }}
         ls -la gapi_*
 
-    - name: Upload artifact
+    - name: Package MIPSle with lib directory
+      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+      run: |
+        mkdir -p release
+        mv gapi_${{ matrix.target.suffix }} release/
+        mv lib release/
+        ls -la release/
+        tar -czf gapi_${{ matrix.target.suffix }}.tar.gz release/
+
+    - name: Upload artifact (MIPSle with lib)
+      if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
+      uses: actions/upload-artifact@v4
+      with:
+        name: gapi_${{ matrix.target.suffix }}
+        path: gapi_${{ matrix.target.suffix }}.tar.gz
+
+    - name: Upload artifact (other platforms)
+      if: matrix.target.cgo == false
       uses: actions/upload-artifact@v4
       with:
         name: gapi_${{ matrix.target.suffix }}
@@ -89,6 +144,6 @@ jobs:
 
           gh release create "$VERSION" \
             --title "Development Build (Latest)" \
-            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms:**%0A- Linux amd64%0A- Linux arm64%0A- Linux mipsle (极路由2 - 已禁用CGO，静态编译)%0A- Windows amd64" \
+            --notes "Automatic build from commit ${{ github.sha }}%0A%0A**Platforms:**%0A- Linux amd64%0A- Linux arm64%0A- Linux mipsle (极路由2 - CGO + SQLite动态库)%0A- Windows amd64%0A%0A**MIPSle说明:**%0A解压后运行 ./release/gapi_linux_mipsle，程序会自动从同级 lib 目录加载 SQLite" \
             --prerelease \
             artifacts/*
