@@ -60,14 +60,12 @@ jobs:
         STUBS_DIR="/usr/mipsel-linux-gnu/include/gnu"
         if [ ! -f "${STUBS_DIR}/stubs-o32_soft.h" ]; then
           echo "Creating missing stubs-o32_soft.h"
-          cat > "${STUBS_DIR}/stubs-o32_soft.h" << 'EOF'
-#if !defined _STUBS_O32_SOFT_H
-#define _STUBS_O32_SOFT_H 1
-
-#include <gnu/stubs-o32.h>
-
-#endif
-EOF
+          echo '#if !defined _STUBS_O32_SOFT_H' > "${STUBS_DIR}/stubs-o32_soft.h"
+          echo '#define _STUBS_O32_SOFT_H 1' >> "${STUBS_DIR}/stubs-o32_soft.h"
+          echo '' >> "${STUBS_DIR}/stubs-o32_soft.h"
+          echo '#include <gnu/stubs-o32.h>' >> "${STUBS_DIR}/stubs-o32_soft.h"
+          echo '' >> "${STUBS_DIR}/stubs-o32_soft.h"
+          echo '#endif' >> "${STUBS_DIR}/stubs-o32_soft.h"
         fi
 
     - name: Build SQLite for MIPSle (with CGO)
