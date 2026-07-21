@@ -53,6 +53,17 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-mipsel-linux-gnu g++-mipsel-linux-gnu libc6-dev-mipsel-cross linux-libc-dev-mipsel-cross libgcc-s1-mipsel-cross libstdc++-10-dev-mipsel-cross
+        STUBS_DIR="/usr/mipsel-linux-gnu/include/gnu"
+        if [ ! -f "${STUBS_DIR}/stubs-o32_soft.h" ]; then
+          echo "Creating missing stubs-o32_soft.h for softfloat ABI"
+          sudo touch "${STUBS_DIR}/stubs-o32_soft.h"
+          sudo sh -c 'echo "#if !defined _STUBS_O32_SOFT_H" > "${STUBS_DIR}/stubs-o32_soft.h"'
+          sudo sh -c 'echo "#define _STUBS_O32_SOFT_H 1" >> "${STUBS_DIR}/stubs-o32_soft.h"'
+          sudo sh -c 'echo "" >> "${STUBS_DIR}/stubs-o32_soft.h"'
+          sudo sh -c 'echo "#include <gnu/stubs-o32.h>" >> "${STUBS_DIR}/stubs-o32_soft.h"'
+          sudo sh -c 'echo "" >> "${STUBS_DIR}/stubs-o32_soft.h"'
+          sudo sh -c 'echo "#endif" >> "${STUBS_DIR}/stubs-o32_soft.h"'
+        fi
 
     - name: Download and extract SQLite .so from OpenWRT (for MIPSle)
       if: matrix.target.arch == 'mipsle' && matrix.target.cgo == true
