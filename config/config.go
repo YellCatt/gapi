@@ -30,7 +30,16 @@ type LogConfig struct {
 var cfg Config
 
 func LoadConfig() {
-	file, err := os.ReadFile("config/config.yaml")
+	configPath := "config/config.yaml"
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		log.Println("config file not found, creating default config...")
+		if err := createDefaultConfig(configPath); err != nil {
+			log.Fatalf("failed to create default config: %v", err)
+		}
+	}
+
+	file, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Fatalf("failed to read config file: %v", err)
 	}
@@ -39,6 +48,32 @@ func LoadConfig() {
 	if err != nil {
 		log.Fatalf("failed to parse config file: %v", err)
 	}
+}
+
+func createDefaultConfig(path string) error {
+	defaultCfg := Config{
+		Server: ServerConfig{
+			Port: 8080,
+		},
+		Database: DatabaseConfig{
+			Path: "./data.db",
+		},
+		Log: LogConfig{
+			Path:  "./logs",
+			Level: "info",
+		},
+	}
+
+	data, err := yaml.Marshal(&defaultCfg)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, data, 0644)
 }
 
 func GetServerPort() int {
